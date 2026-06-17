@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Trading Journal" />
+  <meta name="theme-color" content="#0B0E11" />
+  <title>Paper Trading Journal</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <!-- Inline manifest via data URI -->
+  <link rel="manifest" href="data:application/manifest+json,%7B%22name%22%3A%22Paper+Trading+Journal%22%2C%22short_name%22%3A%22Trade+Log%22%2C%22start_url%22%3A%22.%22%2C%22display%22%3A%22standalone%22%2C%22background_color%22%3A%22%230B0E11%22%2C%22theme_color%22%3A%22%230B0E11%22%2C%22icons%22%3A%5B%7B%22src%22%3A%22data%3Aimage%2Fsvg%2Bxml%2C%253Csvg+xmlns%3D%2527http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%2527+viewBox%3D%25270+0+512+512%2527%253E%253Crect+width%3D%2527512%2527+height%3D%2527512%2527+rx%3D%2527100%2527+fill%3D%2527%25230B0E11%2527%2F%253E%253Ctext+x%3D%2527256%2527+y%3D%2527330%2527+font-size%3D%2527280%2527+text-anchor%3D%2527middle%2527%253E%25F0%259F%2593%2588%253C%2Ftext%253E%253C%2Fsvg%253E%22%2C%22sizes%22%3A%22512x512%22%2C%22type%22%3A%22image%2Fsvg%2Bxml%22%7D%5D%7D" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0B0E11;
+      --surface: #161A1E;
+      --border: #1E2329;
+      --muted: #848E9C;
+      --text: #EAECEF;
+      --yellow: #F0B90B;
+      --green: #0ECB81;
+      --red: #F6465D;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'Space Grotesk', sans-serif;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    #app {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100dvh;
+      padding-top: var(--safe-top);
+      padding-bottom: calc(var(--safe-bottom) + 24px);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 20px 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .header h1 { font-size: 20px; font-weight: 700; }
+    .badge {
+      border: 2px solid var(--yellow);
+      color: var(--yellow);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 8px;
+      letter-spacing: .08em;
+    }
+
+    /* ── Balance card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+      margin: 0 16px 16px;
+    }
+    .balance-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .balance-row { display: flex; align-items: flex-end; gap: 12px; margin-bottom: 12px; }
+    .balance-num { font-family: var(--mono); font-size: 32px; font-weight: 600; }
+    .balance-pnl { font-family: var(--mono); font-size: 13px; font-weight: 500; padding-bottom: 3px; }
+    .green { color: var(--green); }
+    .red   { color: var(--red); }
+    .yellow { color: var(--yellow); }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      text-align: center;
+      border-top: 1px solid var(--border);
+      padding-top: 12px;
+    }
+    .stat-num { font-family: var(--mono); font-size: 14px; font-weight: 500; }
+    .stat-lbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+    .invested-note { font-size: 11px; color: var(--muted); margin-top: 8px; }
+
+    /* ── Buttons ── */
+    .btn-primary {
+      width: 100%;
+      background: var(--yellow);
+      color: var(--bg);
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary:active { opacity: .85; }
+
+    .btn-save {
+      width: 100%;
+      background: var(--green);
+      color: var(--bg);
+      font-family: var(--sans);
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      border-radius: 14px;
+      padding: 12px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-save:active { opacity: .85; }
+
+    .btn-ghost {
+      width: 100%;
+      background: transparent;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-ghost:active { background: var(--border); }
+
+    .btn-icon {
+      background: none;
+      border: none;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-icon:active { color: var(--red); }
+
+    /* ── Form ── */
+    .form-wrap { margin: 0 16px 16px; }
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 16px;
+    }
+    .form-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .form-header h2 { font-size: 16px; font-weight: 700; }
+
+    .field { margin-bottom: 12px; }
+    .field label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .field input, .field textarea {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: var(--text);
+      outline: none;
+      font-family: inherit;
+      -webkit-appearance: none;
+    }
+    .field input:focus, .field textarea:focus { border-color: var(--yellow); }
+    .field input::placeholder, .field textarea::placeholder { color: #3a4048; }
+    .field textarea { resize: none; }
+    .mono-input { font-family: var(--mono) !important; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    .error-msg { font-size: 12px; color: var(--red); margin: 6px 0; }
+
+    /* ── Trade list ── */
+    .trade-list { padding: 0 16px; flex: 1; }
+    .trade-list .space { display: flex; flex-direction: column; gap: 12px; }
+
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 60px 24px;
+      line-height: 1.6;
+    }
+
+    /* ── Trade card ── */
+    .trade-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .trade-inner { padding: 16px; }
+
+    .trade-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .trade-top-left { display: flex; align-items: center; gap: 8px; }
+    .trade-coin { font-size: 18px; font-weight: 700; }
+
+    .pill {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      padding: 2px 8px;
+      border-radius: 99px;
+    }
+    .pill-open   { background: rgba(240,185,11,.15); color: var(--yellow); }
+    .pill-win    { background: rgba(14,203,129,.15); color: var(--green); }
+    .pill-loss   { background: rgba(246,70,93,.15);  color: var(--red); }
+
+    .trade-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5px 8px;
+      font-family: var(--mono);
+      font-size: 13px;
+      margin-bottom: 10px;
+    }
+    .tg-label { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 3px; }
+    .tg-val   { text-align: right; }
+    .tg-val.green { color: var(--green); }
+    .tg-val.red   { color: var(--red); }
+    .tg-val.result {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 4px;
+      font-weight: 600;
+    }
+
+    .reasoning {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      border-radius: 10px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
+      line-height: 1.5;
+    }
+    .reasoning span { color: rgba(234,236,239,.6); }
+
+    /* Close inline */
+    .close-row { display: flex; gap: 8px; align-items: center; }
+    .close-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-size: 14px;
+      font-family: var(--mono);
+      color: var(--text);
+      outline: none;
+      -webkit-appearance: none;
+    }
+    .close-input:focus { border-color: var(--yellow); }
+    .close-input::placeholder { color: #3a4048; }
+    .btn-confirm {
+      background: var(--green);
+      color: var(--bg);
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-confirm:active { opacity: .85; }
+    .btn-cancel-close {
+      background: var(--border);
+      color: var(--text);
+      border: none;
+      border-radius: 10px;
+      padding: 10px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-cancel-close:active { opacity: .85; }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 24px 16px 0;
+      text-align: center;
+      font-size: 10px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    /* ── Install banner ── */
+    #install-banner {
+      margin: 0 16px 12px;
+      background: rgba(240,185,11,.1);
+      border: 1px solid rgba(240,185,11,.3);
+      border-radius: 14px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--yellow);
+    }
+    #install-banner button {
+      margin-left: auto;
+      background: var(--yellow);
+      color: var(--bg);
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: var(--sans);
+    }
+    #install-banner .dismiss {
+      background: none;
+      color: var(--muted);
+      padding: 4px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <div class="header">
+    <h1>Paper Trading Journal</h1>
+    <div class="badge">PAPER · NOT REAL</div>
+  </div>
+
+  <!-- Install banner (shown on Android Chrome, hidden on iOS / already installed) -->
+  <div id="install-banner" style="display:none">
+    <span>📲</span>
+    <span>Add to home screen for app experience</span>
+    <button id="install-btn">Install</button>
+    <button class="dismiss" id="dismiss-banner">✕</button>
+  </div>
+
+  <!-- iOS install hint (shown only on iOS Safari, not in standalone) -->
+  <div id="ios-hint" style="display:none; margin:0 16px 12px; background:rgba(240,185,11,.08); border:1px solid rgba(240,185,11,.25); border-radius:14px; padding:12px 14px; font-size:12px; color:var(--yellow); line-height:1.6;">
+    📲 <strong>To install:</strong> tap the Share button in Safari, then <strong>"Add to Home Screen"</strong>
+    <button onclick="document.getElementById('ios-hint').style.display='none'" style="float:right;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;margin-top:-2px">✕</button>
+  </div>
+
+  <div id="balance-card" class="card"></div>
+
+  <div class="form-wrap" id="form-wrap"></div>
+
+  <div class="trade-list">
+    <div class="space" id="trade-list"></div>
+  </div>
+
+  <div class="footer">
+    Starting balance: $1,000.00 (paper money). For practice only — not financial advice.
+  </div>
+</div>
+
+<script>
+  const STARTING_BALANCE = 1000;
+  let trades = [];
+  let showForm = false;
+  let closingId = null;
+  let exitPriceVal = '';
+  let formError = '';
+  let closeError = '';
+
+  // ── Persistence ──
+  function load() {
+    try {
+      const raw = localStorage.getItem('ptj-trades');
+      if (raw) trades = JSON.parse(raw);
+    } catch(e) {}
+  }
+  function save() {
+    try { localStorage.setItem('ptj-trades', JSON.stringify(trades)); } catch(e) {}
+  }
+
+  // ── PnL ──
+  function pnl(t) {
+    if (t.status !== 'closed') return null;
+    return (t.size / t.entry) * t.exit - t.size;
+  }
+  function fmt(n)       { return '$' + Math.abs(n).toFixed(2); }
+  function fmtSigned(n) { return (n >= 0 ? '+$' : '-$') + Math.abs(n).toFixed(2); }
+
+  // ── Icons (inline SVG) ──
+  const PLUS    = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>`;
+  const X_ICON  = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+  const CHECK   = `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const TRASH   = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>`;
+  const UP      = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>`;
+  const DOWN    = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/></svg>`;
+  const SHIELD  = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#F6465D" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+  const TARGET  = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0ECB81" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>`;
+
+  // ── Render ──
+  function render() {
+    renderBalance();
+    renderForm();
+    renderTrades();
+  }
+
+  function renderBalance() {
+    const closed = trades.filter(t => t.status === 'closed');
+    const open   = trades.filter(t => t.status === 'open');
+    const totalPnl = closed.reduce((s, t) => s + pnl(t), 0);
+    const bal = STARTING_BALANCE + totalPnl;
+    const wins = closed.filter(t => pnl(t) > 0).length;
+    const winRate = closed.length ? Math.round(wins / closed.length * 100) : null;
+    const invested = open.reduce((s, t) => s + t.size, 0);
+
+    const pnlColor = totalPnl >= 0 ? 'green' : 'red';
+    const pnlHtml = closed.length
+      ? `<div class="balance-pnl ${pnlColor}">${fmtSigned(totalPnl)} (${((totalPnl/STARTING_BALANCE)*100).toFixed(1)}%)</div>`
+      : '';
+
+    document.getElementById('balance-card').innerHTML = `
+      <div class="balance-label">Paper Balance</div>
+      <div class="balance-row">
+        <div class="balance-num">${fmt(bal)}</div>
+        ${pnlHtml}
+      </div>
+      <div class="stats-grid">
+        <div><div class="stat-num">${open.length}</div><div class="stat-lbl">Open</div></div>
+        <div><div class="stat-num">${closed.length}</div><div class="stat-lbl">Closed</div></div>
+        <div><div class="stat-num">${winRate === null ? '—' : winRate + '%'}</div><div class="stat-lbl">Win rate</div></div>
+      </div>
+      ${open.length ? `<div class="invested-note">${fmt(invested)} tied up in open positions</div>` : ''}
+    `;
+  }
+
+  function renderForm() {
+    const wrap = document.getElementById('form-wrap');
+    if (!showForm) {
+      wrap.innerHTML = `<button class="btn-primary" onclick="openForm()">${PLUS} Log a new trade</button>`;
+      return;
+    }
+    wrap.innerHTML = `
+      <div class="form-card">
+        <div class="form-header">
+          <h2>New Trade</h2>
+          <button class="btn-icon" onclick="closeForm()">${X_ICON}</button>
+        </div>
+        <div class="field">
+          <label>Coin / Ticker</label>
+          <input id="f-coin" value="" placeholder="e.g. TAO" autocapitalize="characters" autocomplete="off" />
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label>Entry price ($)</label>
+            <input id="f-entry" class="mono-input" placeholder="262.70" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>Amount invested ($)</label>
+            <input id="f-size" class="mono-input" placeholder="100" inputmode="decimal" />
+          </div>
+        </div>
+        <div class="grid-2">
+          <div class="field">
+            <label>${SHIELD} Stop-loss ($)</label>
+            <input id="f-stop" class="mono-input" placeholder="261.70" inputmode="decimal" />
+          </div>
+          <div class="field">
+            <label>${TARGET} Target ($)</label>
+            <input id="f-target" class="mono-input" placeholder="265.00" inputmode="decimal" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Why are you taking this trade?</label>
+          <textarea id="f-reason" rows="2" placeholder="e.g. Broke above resistance at 262, uptrend continuation…"></textarea>
+        </div>
+        ${formError ? `<div class="error-msg">${formError}</div>` : ''}
+        <button class="btn-save" onclick="addTrade()">Save trade</button>
+      </div>
+    `;
+  }
+
+  function renderTrades() {
+    const list = document.getElementById('trade-list');
+    if (trades.length === 0 && !showForm) {
+      list.innerHTML = `<div class="empty">No trades logged yet.<br>Tap "Log a new trade" to get started.</div>`;
+      return;
+    }
+    list.innerHTML = trades.map(t => {
+      const p = pnl(t);
+      const isClosing = closingId === t.id;
+      const pillCls = t.status === 'open' ? 'pill-open' : (p >= 0 ? 'pill-win' : 'pill-loss');
+      const pillTxt = t.status === 'open' ? 'Open' : 'Closed';
+
+      const exitRow = t.status === 'closed' ? `
+        <div class="tg-label">Exit</div><div class="tg-val">${fmt(t.exit)}</div>
+        <div class="tg-label">Result</div>
+        <div class="tg-val result ${p >= 0 ? 'green' : 'red'}">
+          ${p >= 0 ? UP : DOWN} ${fmtSigned(p)}
+        </div>` : '';
+
+      const stopRow  = t.stop   ? `<div class="tg-label">${SHIELD} Stop</div><div class="tg-val red">${fmt(t.stop)}</div>` : '';
+      const targetRow= t.target ? `<div class="tg-label">${TARGET} Target</div><div class="tg-val green">${fmt(t.target)}</div>` : '';
+
+      const closeBtn = t.status === 'open' && !isClosing
+        ? `<button class="btn-ghost" onclick="startClose('${t.id}')">Close position</button>` : '';
+
+      const closeForm = isClosing ? `
+        <div style="margin-top:10px">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:5px">Exit price ($)</label>
+          <div class="close-row">
+            <input class="close-input" id="exit-input" value="${exitPriceVal}" placeholder="e.g. 264.00" inputmode="decimal" oninput="exitPriceVal=this.value" />
+            <button class="btn-confirm" onclick="confirmClose('${t.id}')">${CHECK}</button>
+            <button class="btn-cancel-close" onclick="cancelClose()">${X_ICON}</button>
+          </div>
+          ${closeError ? `<div class="error-msg">${closeError}</div>` : ''}
+        </div>` : '';
+
+      return `
+        <div class="trade-card">
+          <div class="trade-inner">
+            <div class="trade-top">
+              <div class="trade-top-left">
+                <span class="trade-coin">${t.coin}</span>
+                <span class="pill ${pillCls}">${pillTxt}</span>
+              </div>
+              <button class="btn-icon" onclick="deleteTrade('${t.id}')">${TRASH}</button>
+            </div>
+            <div class="trade-grid">
+              <div class="tg-label">Entry</div><div class="tg-val">${fmt(t.entry)}</div>
+              <div class="tg-label">Invested</div><div class="tg-val">${fmt(t.size)}</div>
+              ${stopRow}${targetRow}${exitRow}
+            </div>
+            ${t.reason ? `<div class="reasoning"><span>Reasoning: </span>${escHtml(t.reason)}</div>` : ''}
+            ${closeBtn}${closeForm}
+          </div>
+        </div>`;
+    }).join('');
+
+    // focus exit input if closing
+    if (closingId) {
+      const inp = document.getElementById('exit-input');
+      if (inp) setTimeout(() => inp.focus(), 50);
+    }
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Actions ──
+  function openForm()  { showForm = true; formError = ''; render(); document.getElementById('f-coin')?.focus(); }
+  function closeForm() { showForm = false; formError = ''; render(); }
+
+  function addTrade() {
+    const coin  = document.getElementById('f-coin').value.trim();
+    const entry = parseFloat(document.getElementById('f-entry').value);
+    const size  = parseFloat(document.getElementById('f-size').value);
+    const stop  = parseFloat(document.getElementById('f-stop').value) || null;
+    const target= parseFloat(document.getElementById('f-target').value) || null;
+    const reason= document.getElementById('f-reason').value.trim();
+
+    if (!coin || isNaN(entry) || entry <= 0 || isNaN(size) || size <= 0) {
+      formError = 'Coin, entry price, and amount invested are required.';
+      render(); return;
+    }
+    formError = '';
+    trades.unshift({
+      id: Date.now().toString(), coin: coin.toUpperCase(),
+      entry, size, stop, target, reason,
+      status: 'open', openedAt: new Date().toISOString(),
+      exit: null, closedAt: null
+    });
+    save(); showForm = false; render();
+  }
+
+  function startClose(id)  { closingId = id; exitPriceVal = ''; closeError = ''; render(); }
+  function cancelClose()   { closingId = null; closeError = ''; render(); }
+
+  function confirmClose(id) {
+    const price = parseFloat(exitPriceVal);
+    if (isNaN(price) || price <= 0) { closeError = 'Enter a valid exit price.'; render(); return; }
+    closeError = '';
+    trades = trades.map(t => t.id !== id ? t : { ...t, status: 'closed', exit: price, closedAt: new Date().toISOString() });
+    save(); closingId = null; render();
+  }
+
+  function deleteTrade(id) {
+    if (!confirm('Delete this trade?')) return;
+    trades = trades.filter(t => t.id !== id);
+    save(); render();
+  }
+
+  // ── PWA install prompt ──
+  let deferredPrompt = null;
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredPrompt = e;
+    const banner = document.getElementById('install-banner');
+    if (!sessionStorage.getItem('banner-dismissed')) banner.style.display = 'flex';
+  });
+  document.getElementById('install-btn')?.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    document.getElementById('install-banner').style.display = 'none';
+  });
+  document.getElementById('dismiss-banner')?.addEventListener('click', () => {
+    document.getElementById('install-banner').style.display = 'none';
+    sessionStorage.setItem('banner-dismissed', '1');
+  });
+
+  // iOS Safari detection (not standalone)
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  if (isIOS && !isStandalone) {
+    document.getElementById('ios-hint').style.display = 'block';
+  }
+
+  // ── Boot ──
+  load();
+  render();
+</script>
+</body>
+</html>
